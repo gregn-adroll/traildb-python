@@ -1,0 +1,33 @@
+FROM debian:jessie
+
+ENV DEBIAN_FRONTEND noninteractive
+
+# ./waf installs traildb into /usr/local/lib
+ENV LD_LIBRARY_PATH /usr/local/lib
+
+ADD . /opt/src
+
+RUN apt-get update
+# git is needed to clone the upstream repo
+# pkg-config is needed to build traildb
+# libarchive-dev "
+# libjudy-dev "
+RUN apt-get install build-essential python git pkg-config \
+    libarchive-dev libjudy-dev -y
+
+# clone and build traildb
+RUN mkdir -p /opt/traildb
+WORKDIR /opt/traildb
+RUN git clone http://github.com/traildb/traildb
+WORKDIR /opt/traildb/traildb
+RUN ./waf configure && ./waf build
+# the out of memory test takes a long time
+# any way to skip that test and only that test?
+RUN ./waf test
+RUN ./waf install
+
+WORKDIR /opt/src
+RUN python setup.py build
+RUN python setup.py install
+
+RUN make test
